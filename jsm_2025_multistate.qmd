@@ -1,0 +1,357 @@
+---
+title: "Assessing treatment efficacy for interval-censored endpoints using multistate semi-Markov models fit to multiple data streams"
+author: "Jon Fintzi"
+affiliation: "Statistical Methodology and Innovation"
+date: July 29, 2025
+date-format: long
+format: 
+  revealjs:
+    theme: [simple, clean.scss]
+    scrollable: true
+    transition: slide
+    smaller: true
+    menu:
+        side: left
+    keep-tex: true
+    auto-stretch: false
+    embed-resources: true
+execute: 
+  cache: true
+  eval: false
+from: markdown+emoji
+bibliography: refs.bib
+---
+
+## Introductions
+
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bthetahat}{\widehat{\boldsymbol{\theta}}}
+\newcommand{\bthetaprime}{\boldsymbol{\theta}^\prime}
+\newcommand{\bthetahatprime}{\widehat{\boldsymbol{\theta}^\prime}}
+\newcommand{\nutil}{\widetilde{\nu}}
+\newcommand{\bLambda}{\boldsymbol{\Lambda}}
+\newcommand{\bLambdatil}{\widetilde{\boldsymbol{\Lambda}}}
+\newcommand{\lambdatil}{\widetilde{\lambda}}
+\newcommand{\sigmahat}{\widehat{\sigma}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\rmd}{\mathrm{d}}
+\newcommand{\cur}{\mathrm{cur}}
+\newcommand{\prop}{\mathrm{prop}}
+\newcommand{\new}{\mathrm{new}}
+\newcommand{\bI}{\mathbf{I}}
+\newcommand{\bj}{\mathbf{j}}
+\newcommand{\bJ}{\mathbf{J}}
+\newcommand{\bP}{\mathbf{P}}
+\newcommand{\bt}{\mathbf{t}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bW}{\mathbf{W}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bY}{\mathbf{Y}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bZ}{\mathbf{Z}}
+\newcommand{\wtil}{\widetilde{w}}
+\newcommand{\bZtil}{\widetilde{\bZ}}
+\newcommand{\Qanon}{\widetilde{Q}}
+\newcommand{\Ztil}{\widetilde{Z}}
+\newcommand{\ztil}{\widetilde{z}}
+\newcommand{\Jtil}{\widetilde{J}}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\mcH}{\mathcal{H}}
+\newcommand{\mcS}{\mathcal{S}}
+\newcommand{\mrP}{\mathrm{P}}
+\newcommand{\mrS}{\mathrm{S}}
+\newcommand{\mrN}{\mathrm{N}}
+\newcommand{\mc}[1]{\mathcal{#1}}
+\newcommand{\mr}[1]{\mathrm{#1}}
+\newcommand{\mb}[1]{\mathbb{#1}}
+\newcommand{\ind}[1]{\mathbb{I}\left\{#1\right\}}
+\newcommand{\Var}{\textsf{Var}}
+
+\usepackage{amsmath,amsfonts}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\PassOptionsToPackage{gray}{xcolor}
+
+\definecolor{cbgreen}{RGB}{27,158,119}
+\definecolor{cborange}{RGB}{217,95,2}
+\definecolor{cbpurple}{RGB}{117,112,179}
+
+Hi, I'm new-ish to BMS!
+
+- Statistical Methodology and Innovation.
+- Previously mathematical statistician at the Nation Institute of Allergy and Infectious Diseases. 
+- Department of Biostatistics, University of Washington, Seattle
+
+## Thread - statistical inference for multistate processes
+
+*Overarching goal:* multistate models for progression through discrete biological states.
+
+Some examples from my own work: 
+
+- Dissertation: Stochastic epidemic models fit to partially observed count data.
+- Modeling to inform ventilator capacity surge utilization early in COVID-19. 
+- Adaptive COVID-19 Treatment Trials 1 & 2: clinical progression and ICU utilization. 
+
+![](/figs/actt2_msm_fig1.png){width=80%,fig-align="center"} 
+
+So far, at BMS: 
+
+- Translational modeling for correlated endpoints, e.g., ORR/PFS/OS. 
+- Go/no-go decisions + study design.
+
+Today's talk:
+
+- Clinical and immunological progression among individuals at risk for COVID-19.
+
+## Plan for the day
+
+1. What did we learn? (application)
+2. How did we learn it? (methods)
+3. Where do we go from here? (tools + extensions)
+
+
+## REGEN-2069 trial of mAb as COVID-19 prophylaxis
+
+Monoclonal antibody (mAb), REGEN-COV, for prevention of COVID-19. 
+
+- Primary endpoint was symptomatic infection within 28 days.
+- SARS-CoV-2 naïve unvaccinated participants enrolled within 96 hours of household index case. 
+- Randomized 1:1 to mAb vs. placebo. 
+- Monitored continuously for symptoms. Also, weekly nasopharyngeal swabs for RT-qPCR and serology for anti-nucleocapsid antibodies at 28 days. 
+
+    - PCR indicates ongoing viral shedding.
+    - Positive serology is a marker of immune response to infection.
+
+- 81.4% reduction in risk of symptomatic infection (odds ratio, 0.17; 95% CI, 0.09 to 0.33; p < 0.001).
+
+. . .
+
+Goals in secondary analysis:
+
+- Protective efficacy (PE) against infection (symptomatic + asymptomatic). 
+- Cumulative incidence of infection over the 28 day study period. 
+- Seroconversion following infection. 
+- Duration of detectable viral shedding. 
+
+Difficulty: infection is not continuously observed. 
+
+*Note: From now on, infection = participant is measureably affected by infection.*
+
+## Data assimilation
+
+Strategy: combine PCR, symptom, and serology data. 
+
+- No one data stream completely captures infection. 
+- More kicks at the can to detect infections. 
+- Scientific collaborators use their clinical and immunological expertise to help us formulate a model. 
+
+
+## Modeling multiple data streams (big picture)
+
+Study participants transition through discrete states of infection and immune response:
+
+::: {layout-ncol=2}
+- 1 = Infection naïve,
+- 2 = PCR+, no history of symptoms,
+- 3 = No longer PCR+, no history of symptoms,
+- 4 = PCR+ with history of symptoms,
+- 5 = No longer PCR+ with history of symptoms.
+
+![Multistate model for infection and immunological progression. Arrows are model transitions, dashed lines represent anti-nucleocapsid positivity at D28.](/figs/regendiag.png){width=85%}
+:::
+
+*Idea: PCR, symptoms, and serology are breadcrumbs about each participant's trajectory.*
+
+. . . 
+
+![Hypothetical data for three study participants. PCR is assessed weekly, symptoms are monitored continuously, and serology is assessed at day 28. The derived information is used to infer the possible model states.](/figs/regendata.png){width=90%}
+
+## Model formulation (big picture)
+
+A multistate model is characterized by 
+
+- a set of distinct states, and
+- transition intensities (like hazards for survival) from one state to another,
+$$
+\begin{align*}
+\scriptsize
+\lambda_{ij}(t\mid H(t^-)) = \underset{\Delta t \downarrow 0}{\mathrm{lim}}\frac{\Pr\left(\text{State at }t^-+\Delta t = i\ \vert\ \text{State at }t^- = i,\ \text{history up to }t^-\right)}{\Delta t}
+\end{align*}
+$$
+where time, $t$, is the time since entry to the current state, $i$. 
+- Convenient to adopt a proportional transition intensity parameterization for treatment effects.
+
+Temporal dynamics:
+
+- Markov: transition intensities independent of state sojourn. Often unrealistic, commonly used for computational reasons.
+- Semi-Markov: transition intensities depend on duration of state occupancy. More realistic but difficult to fit. 
+
+## Models 
+
+Fit 6 models varying in their flexibility. 
+
+- Markov model: exponential transition intensities as fit by the `msm` package in R (only off-the-shelf game in town for panel data with state misclassification). 
+- Semi-Markov models: 
+
+  - Weibull transition intensities (fully parametric). 
+  - B-splines (flexible) for infection (1-2) + symptom onset (2-4).
+
+::: {width=80% height=80%}
+![Parameterizations of transition intensities with time, $t$, being time since state entry.](/figs/intensities.png)
+:::
+
+## Results
+
+We choose the second most flexible model by AIC. 
+
+- Gain 100 units of log-likelihood over time-homogeneous Markov model.
+- Gain 78.7 units of log-likelihood over parametric Weibull intensity model. 
+
+::: {}
+![Model comparison. The degree and interior knots of the B-Spline intensities are  $\delta$ and $\xi$, respectively.](/figs/modelselection.png){width=100%}
+:::
+
+## Results
+
+Incidence of symptomatic infection (left) and all-comer infection (right)
+
+:::: {.columns}
+::: {.column width="45%"}
+![Cumulative incidence of symptomatic infection](/figs/cumulative-Symptomatic.png){width="90%" fig-align="left"}
+:::
+
+::: {.column width="45%"}
+![Cumulative incidence of all-comer infection](/figs/cumulative-infection.png){width="90%" fig-align="left"}
+:::
+::::
+
+- Good fit for incidence of symptomatic infection (continuously observed). 
+- Large gap in week 1 between observed infections and smooth estimate reflects early infections not caught until first PCR or symptom onset. 
+- Persistent discrepancy is short shedders not captured by weekly PCR. 
+
+## Results
+
+Treatment effect of mAb on key quantities of interest:
+
+- Lower probability of infection (PE = 1 - relative risk):
+
+    - Overall infection: PE = 60.4% (95% CI: 44.9%, 72.5%),
+    - Symptomatic: PE = 83.6% (95% CI: 69.4%, 93.1%),
+    - Asymptomatic: PE = 38.7% (95% CI: 10.0%, 60.8%).
+
+- Lower prob. of symptoms given infection: RR = 41.2%; (95% CI: 18.9%, 67.7%).
+- Lower prob. of seroconversion given infection: RR = 31.9% (95% CI: 22.3%, 44.6%),
+- Shortened duration of detectable viral shedding:
+
+    - mAb: 6.2 days (95% CI: 5.0 days, 7.8 days),
+    - Placebo: 13.0 days (95% CI: 11.5 days, 14.6 days).
+
+## Key takeaways from the analysis:
+
+- Multifaceted benefit of mAb prophylaxis:
+
+  - Reduced the risk of infection. 
+  - Reduced the risk of symptoms following infection. 
+  - Reduced the duration of detectable viral shedding. 
+  
+- Lower rate of seroconversion following infection after mAb, consistent with less intense immune response to lower viral loads. 
+
+- Short shedders more likely to go undetected on the mAb arm. 
+
+
+## Methodological innovation
+
+**Problem:** Intractable marginal likelihood.
+
+- Coarse data with different temporal resolutions and complicated censoring. 
+- Incomplete identification of state labels at observation times.
+- Likelihood is a product of transition probabilities over inter-observation intervals. Tractable for simple progressive processes, very difficult to evaluate in general.
+
+::: {layout-ncol=1}
+![](/figs/process_and_data){fig-align="center"}
+:::
+
+. . .
+
+**Common solution:** Multistate *Markov* models.
+
+- Computationally tractable transition probabilities, allow intermittent observations and hidden states. 
+- Markov assumption is biologically unrealistic – assumes transition intensity is independent of duration of state occupancy. 
+
+. . .
+
+**Methodological contribution:** Monte Carlo expectation-maximization framework for fitting multistate *semi-Markov* models to coarsened data. 
+
+- Semi-Markov assumption is more biologically realistic.
+- Importance sampling + Julia implementation $\implies$ computationally efficient.
+- Re-submitted to *Biostatistics* last week. Available on ArXiv: https://arxiv.org/abs/2501.14097. 
+
+## Monte Carlo expectation-maximization
+
+Expectation-maximization (EM) algorithm:
+
+- Maximum likelihood in missing data settings.
+- Algernate between (E-step) calculating the expected complete data log-likelihood, i.e., Q-function, and maximizing the Q-function. 
+
+Monte Carlo EM algorithm: 
+
+- In our setting, need to approximate the Q-function via Monte Carlo. 
+- Sample latent paths using a Markov surrogate + standard algorithms for HMMs and endpoint conditioned Markov chains.
+- Sampling effort calibrated to achieve effective sample size to recover ascent property of EM with high probability.
+- Model agnostic algorithm - can accomodate complex model structure and coarse data. 
+
+::: {layout-ncol=1 out-width="50%"}
+![](/figs/sampling_alg){fig-align="center" width="60%"}
+:::
+
+## Demonstration
+
+Switching over to VSCode... 
+
+## Wrapping up
+
+**Contributions on methodology and implementation**
+
+- Fit semi-Markov models to data with complex coarsening patterns. 
+- Algorithm is agnostic of model structure, but not a panacea for non-identifiability where it can fail loudly (a strength). 
+- Can accomodate splines + other flexible functions. 
+- Flexible and general impementation in R/Julia.
+
+**Methodological extensions ("low-hanging fruit")**
+
+- Disease driven observation schemes + preferential sampling.
+- Penalized splines and approximate cross-validation approximation for semi-parametric inference with automatic smoothing.
+- Fast robust uncertainty quantification. 
+- Phase-type proposal distributions. 
+
+Please reach out if you want to collaborate on an analysis or methods, or if you want to learn Julia! 😊
+
+# Thank you!
+
+And also thanks to my excellent collaborators! 
+
+- Raphaël Morsomme (FDA),
+- C. Jason Liang, Allyson Mateja, Dean Follmann (NIAID, NIH),
+- CG Wang, Meagan O'Brien (Regeneron).
+
+# Supplementary slides
+
+## Crude tabulation of participant outcomes
+
+::: {layout-ncol=1}
+![](/figs/regencrudetab){fig-align="center"}
+:::
+
+## Additional results
+
+::: {layout-ncol=1 out-width="50%"}
+![](/figs/whiskers-all){fig-align="center" width="50%"}
+:::
+
+## Additional results
+
+::: {layout-ncol=1 out-width="50%"}
+![](/figs/regenfullres){fig-align="center" width="50%"}
+:::
