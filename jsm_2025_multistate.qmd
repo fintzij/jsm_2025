@@ -1,8 +1,8 @@
 ---
 title: "Assessing treatment efficacy for interval-censored endpoints using multistate semi-Markov models fit to multiple data streams"
 author: "Jon Fintzi"
-affiliation: "Statistical Methodology and Innovation"
-date: July 29, 2025
+institute: "Statistical Methodology and Innovation, Bristol Myers Squibb"
+date: August 4, 2025
 date-format: long
 format: 
   revealjs:
@@ -78,40 +78,6 @@ bibliography: refs.bib
 \definecolor{cborange}{RGB}{217,95,2}
 \definecolor{cbpurple}{RGB}{117,112,179}
 
-Hi, I'm new-ish to BMS!
-
-- Statistical Methodology and Innovation.
-- Previously mathematical statistician at the Nation Institute of Allergy and Infectious Diseases. 
-- Department of Biostatistics, University of Washington, Seattle
-
-## Thread - statistical inference for multistate processes
-
-*Overarching goal:* multistate models for progression through discrete biological states.
-
-Some examples from my own work: 
-
-- Dissertation: Stochastic epidemic models fit to partially observed count data.
-- Modeling to inform ventilator capacity surge utilization early in COVID-19. 
-- Adaptive COVID-19 Treatment Trials 1 & 2: clinical progression and ICU utilization. 
-
-![](/figs/actt2_msm_fig1.png){width=80%,fig-align="center"} 
-
-So far, at BMS: 
-
-- Translational modeling for correlated endpoints, e.g., ORR/PFS/OS. 
-- Go/no-go decisions + study design.
-
-Today's talk:
-
-- Clinical and immunological progression among individuals at risk for COVID-19.
-
-## Plan for the day
-
-1. What did we learn? (application)
-2. How did we learn it? (methods)
-3. Where do we go from here? (tools + extensions)
-
-
 ## REGEN-2069 trial of mAb as COVID-19 prophylaxis
 
 Monoclonal antibody (mAb), REGEN-COV, for prevention of COVID-19. 
@@ -183,10 +149,69 @@ $$
 where time, $t$, is the time since entry to the current state, $i$. 
 - Convenient to adopt a proportional transition intensity parameterization for treatment effects.
 
-Temporal dynamics:
+Temporal dynamics of clinical progression:
 
-- Markov: transition intensities independent of state sojourn. Often unrealistic, commonly used for computational reasons.
-- Semi-Markov: transition intensities depend on duration of state occupancy. More realistic but difficult to fit. 
+- Markov models: 
+
+  - Transition intensities independent of state sojourn. 
+  - Can be used to analyze data under intermittent observation and hidden states. 
+  - Often unrealistic, commonly used for computational reasons.
+
+- Semi-Markov models: 
+
+  - Transition intensities depend on duration of state occupancy. 
+  - More realistic but difficult to fit. 
+
+## Here's the problem
+
+Data are a coarse reflection of a latent biological process in continuous time.
+
+- Coarse data with different temporal resolutions and complicated censoring. 
+- Incomplete identification of state labels at observation times.
+- Likelihood is a product of transition probabilities over inter-observation intervals. 
+
+::: {layout-ncol=1}
+![](/figs/process_and_data){fig-align="center"}
+:::
+
+. . .
+
+*Marginal likelihoods for semi-Markov processes integrate over the number + timing of unobserved state transitions.*
+
+- Tractable for simple progressive processes, very difficult to evaluate in general.
+- No Kolmogorov forward equation as in the Markov case. 
+
+## Methodological contribution
+
+Recall, in the expectation-maximization (EM) algorithm we alternate between: 
+
+  - E-step: calculate the expected complete data log-likelihood, i.e., Q-function, to average over missing data.
+  - M-step: maximize the Q-function. 
+
+- Wash, rinse, repeat until convergence to obtain an MLE.
+
+. . .
+
+**Key innovation:** *Monte Carlo* expectation-maximization framework for fitting multistate *semi-Markov* models to coarsened data. 
+
+  - E-step: approximate Q-function via Monte Carlo – average log-likelihood over paths that are sampled conditionally on the data.
+  - M-step: maximize the Q-function. 
+
+- Wash, rinse, repeat until convergence to obtain an MLE.
+- But how should we sample the paths? 
+
+. . .
+
+**Our proposal:**
+
+- Sample latent paths using a Markov surrogate + standard algorithms for HMMs and endpoint conditioned Markov chains.
+
+::: {layout-ncol=1 out-width="50%"}
+![](/figs/sampling_alg){fig-align="center" width="60%"}
+:::
+
+- Model agnostic algorithm - can accomodate complex model structure, semi-parametric intensities, and coarse data. 
+- Details in the manuscript, available on ArXiv: https://arxiv.org/abs/2501.14097. 
 
 ## Models 
 
@@ -231,84 +256,30 @@ Incidence of symptomatic infection (left) and all-comer infection (right)
 - Large gap in week 1 between observed infections and smooth estimate reflects early infections not caught until first PCR or symptom onset. 
 - Persistent discrepancy is short shedders not captured by weekly PCR. 
 
-## Results
 
-Treatment effect of mAb on key quantities of interest:
+## Key takeaways from the analysis:
 
-- Lower probability of infection (PE = 1 - relative risk):
+Multifaceted benefit of mAb prophylaxis:
+
+  - Reduced the risk of infection (PE = 1 - relative risk):
 
     - Overall infection: PE = 60.4% (95% CI: 44.9%, 72.5%),
     - Symptomatic: PE = 83.6% (95% CI: 69.4%, 93.1%),
     - Asymptomatic: PE = 38.7% (95% CI: 10.0%, 60.8%).
-
-- Lower prob. of symptoms given infection: RR = 41.2%; (95% CI: 18.9%, 67.7%).
-- Lower prob. of seroconversion given infection: RR = 31.9% (95% CI: 22.3%, 44.6%),
-- Shortened duration of detectable viral shedding:
-
-    - mAb: 6.2 days (95% CI: 5.0 days, 7.8 days),
-    - Placebo: 13.0 days (95% CI: 11.5 days, 14.6 days).
-
-## Key takeaways from the analysis:
-
-- Multifaceted benefit of mAb prophylaxis:
-
-  - Reduced the risk of infection. 
+    
   - Reduced the risk of symptoms following infection. 
-  - Reduced the duration of detectable viral shedding. 
-  
-- Lower rate of seroconversion following infection after mAb, consistent with less intense immune response to lower viral loads. 
 
-- Short shedders more likely to go undetected on the mAb arm. 
+    - RR = 41.2%; (95% CI: 18.9%, 67.7%).
 
+Lower rate of seroconversion following infection. 
 
-## Methodological innovation
+  - RR of seroconversion = 31.9% (95% CI: 22.3%, 44.6%).
+  - Consistent with less intense immune response to lower viral loads. 
 
-**Problem:** Intractable marginal likelihood.
+Shortened duration of detectable viral shedding:
 
-- Coarse data with different temporal resolutions and complicated censoring. 
-- Incomplete identification of state labels at observation times.
-- Likelihood is a product of transition probabilities over inter-observation intervals. Tractable for simple progressive processes, very difficult to evaluate in general.
-
-::: {layout-ncol=1}
-![](/figs/process_and_data){fig-align="center"}
-:::
-
-. . .
-
-**Common solution:** Multistate *Markov* models.
-
-- Computationally tractable transition probabilities, allow intermittent observations and hidden states. 
-- Markov assumption is biologically unrealistic – assumes transition intensity is independent of duration of state occupancy. 
-
-. . .
-
-**Methodological contribution:** Monte Carlo expectation-maximization framework for fitting multistate *semi-Markov* models to coarsened data. 
-
-- Semi-Markov assumption is more biologically realistic.
-- Importance sampling + Julia implementation $\implies$ computationally efficient.
-- Re-submitted to *Biostatistics* last week. Available on ArXiv: https://arxiv.org/abs/2501.14097. 
-
-## Monte Carlo expectation-maximization
-
-Expectation-maximization (EM) algorithm:
-
-- Maximum likelihood in missing data settings.
-- Algernate between (E-step) calculating the expected complete data log-likelihood, i.e., Q-function, and maximizing the Q-function. 
-
-Monte Carlo EM algorithm: 
-
-- In our setting, need to approximate the Q-function via Monte Carlo. 
-- Sample latent paths using a Markov surrogate + standard algorithms for HMMs and endpoint conditioned Markov chains.
-- Sampling effort calibrated to achieve effective sample size to recover ascent property of EM with high probability.
-- Model agnostic algorithm - can accomodate complex model structure and coarse data. 
-
-::: {layout-ncol=1 out-width="50%"}
-![](/figs/sampling_alg){fig-align="center" width="60%"}
-:::
-
-## Demonstration
-
-Switching over to VSCode... 
+  - mAb: 6.2 days (95% CI: 5.0 days, 7.8 days),
+  - Placebo: 13.0 days (95% CI: 11.5 days, 14.6 days).
 
 ## Wrapping up
 
@@ -326,7 +297,7 @@ Switching over to VSCode...
 - Fast robust uncertainty quantification. 
 - Phase-type proposal distributions. 
 
-Please reach out if you want to collaborate on an analysis or methods, or if you want to learn Julia! 😊
+Please reach out if you want to collaborate on an analysis or methods! 😊 (jonathan.fintzi@bms.com)
 
 # Thank you!
 
@@ -354,4 +325,24 @@ And also thanks to my excellent collaborators!
 
 ::: {layout-ncol=1 out-width="50%"}
 ![](/figs/regenfullres){fig-align="center" width="50%"}
+:::
+
+## Comparison with phase-type models
+
+Setup: 
+
+- Recurrent illness-death model, monthly observations over 1 year, death observed exactly. N = 1000.
+- Health -> Ill is Weibull with increasing intensity, other transitions exponential.
+- Models: time-homogeneous Markov, phase-type with 2 latent states for healthy -> ill transition, semi-Markov with spline for healthy -> ill transition (degree 1, interior knot at 0.5 chosen arbitrarily). 
+
+::: {layout-ncol=1 out-width="100%"}
+![](/figs/prevalence_comparison_1000){fig-align="center"}
+:::
+
+## Efficiency vs. rejection sampling
+
+Compute effort to obtain complete trajectories for a single transition. A\&B = rejection sampler from Aralis \& Brookmyer (2019).
+
+::: {layout-ncol=1 out-width="60%"}
+![](/figs/sampling_efficiency){fig-align="center" width="60%"}
 :::
