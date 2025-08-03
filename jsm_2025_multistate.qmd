@@ -22,7 +22,7 @@ from: markdown+emoji
 bibliography: refs.bib
 ---
 
-## Introductions
+## REGEN-2069 trial of mAb as COVID-19 prophylaxis
 
 \newcommand{\btheta}{\boldsymbol{\theta}}
 \newcommand{\bthetahat}{\widehat{\boldsymbol{\theta}}}
@@ -77,8 +77,6 @@ bibliography: refs.bib
 \definecolor{cbgreen}{RGB}{27,158,119}
 \definecolor{cborange}{RGB}{217,95,2}
 \definecolor{cbpurple}{RGB}{117,112,179}
-
-## REGEN-2069 trial of mAb as COVID-19 prophylaxis
 
 Monoclonal antibody (mAb), REGEN-COV, for prevention of COVID-19. 
 
